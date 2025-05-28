@@ -35,9 +35,29 @@
   #include "snapshot-inl.h"
 #endif
 
-void __demo_crash() {
+/*
+  Implement __afl_check_cmd_injection to detect metacharacters in a command string.
+  If a metacharacter is found, it prints an error message to stderr and calls abort().
+*/
+void __afl_check_cmd_injection(const char *command_string) {
 
-  fprintf(stderr, "system found!\n");
-  abort();
+  if (command_string == NULL) { return; }
 
+  // Metacharacters that could indicate command injection vulnerabilities.
+  // Note: '&' can appear in legitimate URLs. This is a known trade-off.
+  const char *metachars = ";|&`$()<>";
+
+  // Iterate through the command_string to check for any metacharacters.
+  // Using strpbrk for efficiency to find any character from metachars in command_string.
+  const char *found_char = strpbrk(command_string, metachars);
+
+  if (found_char != NULL) {
+    // A metacharacter was found.
+    fprintf(stderr,
+            "Potential command injection detected! Metacharacter '%c' found in command: %s\n",
+            *found_char, command_string);
+    abort(); // Terminate the program, allowing AFL++ to detect the crash.
+  }
+
+  // No metacharacters found, function returns normally.
 }
